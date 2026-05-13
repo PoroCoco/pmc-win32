@@ -28,7 +28,11 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#ifndef _MSC_VER
 #include <sys/time.h>
+#else
+#include <chrono>
+#endif
 
 #ifdef _MSC_VER
 #define WIN32_LEAN_AND_MEAN
@@ -67,9 +71,14 @@ void usage(char *argv0) {
 
 
 double get_time() {
+#ifdef _MSC_VER
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    return std::chrono::duration<double>(now).count();
+#else
     timeval t;
     gettimeofday(&t, NULL);
     return t.tv_sec*1.0 + t.tv_usec/1000000.0;
+#endif
 }
 
 string memory_usage() {

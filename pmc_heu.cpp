@@ -22,6 +22,7 @@
 #include "pmc/pmc_heu.h"
 
 #include <algorithm>
+#include <atomic>
 
 using namespace pmc;
 
@@ -71,7 +72,7 @@ int pmc_heu::search_bounds(const pmc_graph& G, std::vector<int>& C_max) {
 
     bool_vector ind(G.num_vertices(), false);
 
-    bool found_ub = false;
+    std::atomic<bool> found_ub{false};
     int mc = 0;
 
     #pragma omp parallel for schedule(dynamic) \
@@ -79,11 +80,7 @@ int pmc_heu::search_bounds(const pmc_graph& G, std::vector<int>& C_max) {
         private(P, C) firstprivate(ind) \
         num_threads(num_threads)
     for (int i = G.num_vertices()-1; i >= 0; --i) {
-        bool found_ub_local = false;
-        #pragma omp atomic read acquire
-        found_ub_local = found_ub;
-
-        if (found_ub_local) {
+        if (found_ub.load(std::memory_order_acquire)) {
             continue;
         }
 
@@ -105,8 +102,7 @@ int pmc_heu::search_bounds(const pmc_graph& G, std::vector<int>& C_max) {
                 branch(P, 1 , mc_cur, C, ind);
 
                 if (mc_cur >= ub) {
-                    #pragma omp atomic write release
-                    found_ub = true;
+                    found_ub.store(true, std::memory_order_release);
                 }
 
                 if (mc_cur > mc_prev) {
