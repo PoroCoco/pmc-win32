@@ -22,11 +22,19 @@
 
 #include <cassert>
 #include <cstring>
+#ifndef _MSC_VER
 #include <dirent.h>
+#endif
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <sys/time.h>
+
+#ifdef _MSC_VER
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 using namespace std;
 
@@ -123,6 +131,22 @@ void validate(bool condition, const string& msg) {
 }
 
 int getdir (string dir, vector<string> &files) {
+#ifdef _MSC_VER
+    WIN32_FIND_DATAA findData;
+    string search = dir + "\\*";
+    HANDLE hFind = FindFirstFileA(search.c_str(), &findData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        DWORD err = GetLastError();
+        cout << "Error(" << err << ") opening " << dir << endl;
+        return (int)err;
+    }
+    do {
+        if (strcmp(findData.cFileName, ".") != 0)
+            files.push_back(string(findData.cFileName));
+    } while (FindNextFileA(hFind, &findData));
+    FindClose(hFind);
+    return 0;
+#else
     DIR *dp;
     struct dirent *dirp;
     if((dp  = opendir(dir.c_str())) == NULL) {
@@ -136,6 +160,7 @@ int getdir (string dir, vector<string> &files) {
     }
     closedir(dp);
     return 0;
+#endif
 }
 
 
